@@ -21,6 +21,8 @@ import LanguageSource, { CompleteConfig } from './source-language'
 import VimSource from './source-vim'
 const logger = require('../util/logger')('sources')
 
+// 要有个地方来完成监听函数的注册
+// 即注册一个方法来供 company-backend 调用，而不是统一在一个地方调用，或者和 lsp-bridge 一样，在一个地方注册一个 wrapper 方法，内部来完成对这些实际方法的调用
 export class Sources {
   private sourceMap: Map<string, ISource> = new Map()
   private disposables: Disposable[] = []

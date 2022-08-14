@@ -313,6 +313,7 @@ export class LanguageClient extends BaseLanguageClient {
     // We got a function.
     if (Is.func(server)) {
       return server().then(result => {
+        // result 的类型有 MessageTransports 、 StreamInfo 、 ChildProcessInfo 以及 ChildProcess 这四种类型
         if (MessageTransports.is(result)) {
           this._isDetached = !!result.detached
           return result
@@ -382,17 +383,23 @@ export class LanguageClient extends BaseLanguageClient {
             args.push(`--socket=${transport.port}`)
           }
           args.push(`--clientProcessId=${process.pid.toString()}`)
+          // stdio 是我们常用的
           if (transport === TransportKind.ipc || transport === TransportKind.stdio) {
+            // 启动一个 childprocess 线程
             let serverProcess = cp.spawn(runtime, args, execOptions)
             if (!serverProcess || !serverProcess.pid) {
               return Promise.reject<MessageTransports>(`Launching server using runtime ${runtime} failed.`)
             }
-            this._serverProcess = serverProcess
+            this._serverProcess = serverProcess // 启动成功之后记录下服务实例对象
+
+            // 监听数据传输
             serverProcess.stderr.on('data', data => this.outputChannel.append(Is.string(data) ? data : data.toString(encoding)))
+
             if (transport === TransportKind.ipc) {
               serverProcess.stdout.on('data', data => this.outputChannel.append(Is.string(data) ? data : data.toString(encoding)))
               return Promise.resolve({ reader: new IPCMessageReader(serverProcess), writer: new IPCMessageWriter(serverProcess) })
             } else {
+              // stdio
               return Promise.resolve({ reader: new StreamMessageReader(serverProcess.stdout), writer: new StreamMessageWriter(serverProcess.stdin) })
             }
           } else if (transport === TransportKind.pipe) {

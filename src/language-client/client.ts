@@ -170,12 +170,17 @@ function createConnection(
   options?: ConnectionOptions
 ): IConnection {
   let logger = new ConsoleLogger()
+
+  // 这个是？ 来自 vscode-languageserver-protocol
   let connection = createProtocolConnection(input, output, logger, options)
   let disposables: Disposable[] = []
+  // 两个监听
   connection.onError(data => {
     errorHandler(data[0], data[1], data[2])
   }, null, disposables)
   connection.onClose(closeHandler, null, disposables)
+
+  // 感觉上所有通过这个 connection 发生的请求和响应，都会委托为上面的 input 和 output 来处理
   let result: IConnection = {
     listen: (): void => connection.listen(),
     unlisten: (): void => {
@@ -1860,11 +1865,14 @@ class CompletionItemFeature extends TextDocumentFeature<CompletionOptions, Compl
     let triggerCharacters = options.triggerCharacters || []
     let allCommitCharacters = options.allCommitCharacters || []
     let priority = (options as any).priority as number
+    // 提供补全项，什么时候调用这个方法呢？当接收到来自 emacs 的 company-backend 的请求，执行该方法，并将得到的结果处理之后发送给 compnay-backend
+    // 然后 backend 再调用 callback 来弹出补全窗口
     const provider: CompletionItemProvider = {
       provideCompletionItems: (document: TextDocument, position: Position, token: CancellationToken, context: CompletionContext): ProviderResult<CompletionList | CompletionItem[]> => {
         const client = this._client
         const middleware = this._client.clientOptions.middleware!
         const provideCompletionItems: ProvideCompletionItemsSignature = (document, position, context, token) => {
+          // 这里是发送请求，重点是这个 client 的来路
           return client.sendRequest(
             CompletionRequest.type,
             cv.asCompletionParams(document, position, context),
@@ -3502,7 +3510,9 @@ export abstract class BaseLanguageClient {
     return this.state === ClientState.Running && !!this._resolvedConnection
   }
 
+  // 开始？
   public start(): Disposable {
+    // 查找项目根路径？
     this._rootPath = this.resolveRootPath()
     if (this._rootPath === false) {
       this.warn(`Required root pattern not resolved, server won't start.`)
@@ -3513,6 +3523,7 @@ export abstract class BaseLanguageClient {
         this._onReadyCallbacks = new OnReady(resolve, reject)
       })
     }
+    // 这两个的作用？
     this._listeners = []
     this._providers = []
     // If we restart then the diagnostics collection is reused.
@@ -3525,6 +3536,7 @@ export abstract class BaseLanguageClient {
     }
 
     this.state = ClientState.Starting
+    // 拿到连接，但是下面这些监听的消息放佛都不是我们想要的？？
     this.resolveConnection()
       .then(connection => {
         connection.onLogMessage(message => {
@@ -3730,6 +3742,7 @@ export abstract class BaseLanguageClient {
       this._capabilities = Object.assign({}, result.capabilities, {
         resolvedTextDocumentSync: textDocumentSyncOptions
       })
+      // 这里貌似是一些请求了？ 这些是服务端的请求吗？？？
       connection.onDiagnostics(params => this.handleDiagnostics(params))
       connection.onRequest(RegistrationRequest.type, params =>
         this.handleRegistrationRequest(params)
@@ -3958,6 +3971,7 @@ export abstract class BaseLanguageClient {
     return this.createMessageTransports(
       this._clientOptions.stdioEncoding || 'utf8'
     ).then(transports => {
+      // 拿到了 transports 然后 createConnection ？
       return createConnection(
         transports.reader,
         transports.writer,
