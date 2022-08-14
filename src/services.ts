@@ -325,6 +325,8 @@ export class ServiceManager extends EventEmitter implements Disposable {
     return await Promise.resolve(service.client.sendRequest(method, params, token))
   }
 
+  // 其他语言插件会调用这个接口来注册自身？
+  // 我们其实需要的是根据一个 json 文件来完成注册，不需要专门的插件，所以这个需要转换一下
   public registLanguageClient(client: LanguageClient): Disposable
   public registLanguageClient(name: string, config: LanguageServerConfig): Disposable
   public registLanguageClient(name: string | LanguageClient, config?: LanguageServerConfig): Disposable {

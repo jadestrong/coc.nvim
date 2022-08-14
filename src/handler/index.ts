@@ -78,6 +78,8 @@ export default class Handler implements HandlerDelegate {
       }
     }, null, this.disposables)
     this.labels = workspace.getConfiguration('suggest').get<any>('completionItemKindLabels', {})
+
+    // 以下都是特定的功能，用于执行在 plugin.ts 文件中注册的 action 方法
     this.fold = new Fold(nvim, this)
     this.links = new Links(nvim, this)
     this.codeLens = new CodeLens(nvim)
@@ -98,6 +100,7 @@ export default class Handler implements HandlerDelegate {
     this.selectionRange = new SelectionRange(nvim, this)
     this.linkedEditingHandler = new LinkedEditingHandler(nvim, this)
     this.inlayHintHandler = new InlayHintHandler(nvim, this)
+
     this.disposables.push({
       dispose: () => {
         this.callHierarchy.dispose()
