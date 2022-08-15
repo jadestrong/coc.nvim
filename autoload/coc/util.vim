@@ -152,6 +152,10 @@ function! coc#util#open_file(cmd, file)
   return bufnr('%')
 endfunction
 
+" 这里定义了启动 js 服务的命令，访问了 build/index.js 文件
+" 该文件是 package.json 中定义的 main 入口文件
+" 而生成是通过 esbuild 编译生成的，编译的入口见 esbuild.js 文件中的配置，是 src/main.ts 文件
+" 返回的是一个 `node [--node args] [path to build/index.js]` 的字符串
 function! coc#util#job_command()
   if (has_key(g:, 'coc_node_path'))
     let node = expand(g:coc_node_path)
@@ -356,6 +360,7 @@ function! coc#util#update_extensions(...) abort
   endif
 endfunction
 
+" 安装 coc 的插件
 function! coc#util#install_extension(args) abort
   let names = filter(copy(a:args), 'v:val !~# "^-"')
   let isRequest = index(a:args, '-sync') != -1

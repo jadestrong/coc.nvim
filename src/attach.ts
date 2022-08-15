@@ -16,6 +16,7 @@ const isTest = global.hasOwnProperty('__TEST__')
 const ACTIONS_NO_WAIT = ['installExtensions', 'updateExtensions']
 
 export default (opts: Attach, requestApi = true): Plugin => {
+  // 启动 neovim 服务
   const nvim: NeovimClient = attach(opts, log4js.getLogger('node-client'), requestApi)
   if (!global.hasOwnProperty('__TEST__')) {
     nvim.call('coc#util#path_replace_patterns').then(prefixes => {
@@ -29,15 +30,21 @@ export default (opts: Attach, requestApi = true): Plugin => {
       }
     }).logError()
   }
+  // nvim 其实就是 node-elrpc 吧，处理提供了一些直接调用的方法
+  // 还可以抛出一些从 vim 中发送出的事件
+  // node-elrpc 是否也可以定义一些 notification 来抛出呢？
   nvim.setVar('coc_process_pid', process.pid, true)
   const plugin = new Plugin(nvim)
   let clientReady = false
   let initialized = false
+
+  // 监听 neovim 上传递出的事件
   nvim.on('notification', async (method, args) => {
     switch (method) {
       case 'VimEnter': {
         if (!initialized && clientReady) {
           initialized = true
+          // 进入 vim 后，执行 init 方法
           await plugin.init()
         }
         break
@@ -88,6 +95,8 @@ export default (opts: Attach, requestApi = true): Plugin => {
     }
   })
 
+  // 监听 request 事件， coc#rpc#request 调用的方法，就被传递到这里
+  // 比如 installExtensions 方法
   nvim.on('request', async (method: string, args, resp) => {
     if (method == 'redraw') {
       // ignore redraw from neovim
@@ -108,7 +117,9 @@ export default (opts: Attach, requestApi = true): Plugin => {
           resp.send('Plugin not ready', true)
           return
         }
+        // vim 远程调用的方法都是在这里注册的 action ，method 对应 coc#rpc#request 传递的方法名
         logger.info('Request action:', method, args)
+        // 调用方法名对应 plugin 上对应的 action
         let res = await plugin.cocAction(method, ...args)
         resp.send(res)
       }

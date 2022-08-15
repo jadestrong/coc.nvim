@@ -112,6 +112,7 @@ export class Extensions {
 
   constructor() {
     let folder = global.__TEST__ ? path.join(__dirname, '__tests__') : process.env.COC_DATA_HOME
+    // COC_DATA_HOME 下的 extensions 目录，即插件的 root 目录
     let root = this.root = path.join(folder, 'extensions')
     let checked = this.checkRoot(root)
     if (checked) {
@@ -259,6 +260,7 @@ export class Extensions {
       installer.on('message', (msg, isProgress) => {
         installBuffer.addMessage(id, msg, isProgress)
       })
+      // 执行 update 后返回的是更新的插件的目录地址
       return installer.update(url).then(directory => {
         installBuffer.finishProgress(id, true)
         if (directory) {
@@ -285,25 +287,33 @@ export class Extensions {
   }
 
   /**
+   * :CocInstall 的实际执行的方法
    * Install extensions, can be called without initialize.
    */
   public async installExtensions(list: string[] = []): Promise<void> {
     let { npm } = this
     if (!npm || !list.length) return
     list = distinct(list)
+    // 这个应该是 vim 里面安装时弹出的那个 buffer ，里面有要安装的插件的列表以及安装进度等信息
     let installBuffer = this.installBuffer = new InstallBuffer()
     installBuffer.setExtensions(list)
     await installBuffer.show(workspace.nvim)
+
+    // 安装器工厂？用什么实现的？ worker 吗，还是 child_process
+    // modulesFolder 是 root 目录
     let createInstaller = createInstallerFactory(this.npm, this.modulesFolder)
     let fn = (key: string): Promise<void> => {
       installBuffer.startProgress([key])
       let installer = createInstaller(key)
+      // 监听安装器发送出来的 message ，更新 buffer 中的 progress 信息
       installer.on('message', (msg, isProgress) => {
         installBuffer.addMessage(key, msg, isProgress)
       })
+      // 启动安装
       return installer.install().then(name => {
         installBuffer.finishProgress(key, true)
         let directory = path.join(this.modulesFolder, name)
+        // 安装完成，加载该插件
         this.loadExtension(directory).logError()
         let ms = key.match(/(.+)@([^/]+)$/)
         if (ms != null) void this.lockExtension(name, true)
@@ -313,6 +323,7 @@ export class Extensions {
         logger.error(`Error on install ${key}`, err)
       })
     }
+    // 同时安装 list ，针对 list 的中的每一个 item 执行 fn
     await concurrent(list, fn)
   }
 
@@ -511,6 +522,7 @@ export class Extensions {
     }
     try {
       let parentFolder = path.dirname(folder)
+      // 如果当前插件的目录是我们定义的存放插件的 extensions 目录，表明这是一个本地插件
       let isLocal = path.normalize(parentFolder) != path.normalize(this.modulesFolder)
       let jsonFile = path.join(folder, 'package.json')
       let packageJSON = JSON.parse(fs.readFileSync(jsonFile, 'utf8'))
@@ -527,6 +539,7 @@ export class Extensions {
     }
   }
 
+  // 加载 coc-extensions 目录下的所有 js 文件
   private async loadFileExtensions(): Promise<void> {
     if (!process.env.COC_VIMCONFIG) return
     let folder = path.join(process.env.COC_VIMCONFIG, 'coc-extensions')

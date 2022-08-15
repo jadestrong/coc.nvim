@@ -45,6 +45,7 @@ let s:root = expand('<sfile>:h:h')
 let s:is_vim = !has('nvim')
 let s:is_gvim = s:is_vim && has("gui_running")
 
+" 启动 rpc 服务 NOTE
 if get(g:, 'coc_start_at_startup', 1) && !s:is_gvim
   call coc#rpc#start_server()
 endif

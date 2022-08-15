@@ -4,6 +4,8 @@ let s:client = v:null
 let s:name = 'coc'
 let s:is_vim = !has('nvim')
 
+" 在 client 之上的一层封装，供其他地方通过它来调用 client 来完成交互
+" 启动 rpc 服务， s:client 用来报存服务实例
 function! coc#rpc#start_server()
   if get(g:, 'coc_node_env', '') ==# 'test'
     " server already started
@@ -14,11 +16,11 @@ function! coc#rpc#start_server()
     return
   endif
   if empty(s:client)
-    let cmd = coc#util#job_command()
+    let cmd = coc#util#job_command() " 获取执行 js 的 node 命令的字符串，比如 `node path-to/build/index.js`
     if empty(cmd) | return | endif
     let $COC_VIMCONFIG = coc#util#get_config_home()
     let $COC_DATA_HOME = coc#util#get_data_home()
-    let s:client = coc#client#create(s:name, cmd)
+    let s:client = coc#client#create(s:name, cmd) " 调用 client.vim 的方法，传入名字和命令
   endif
   if !coc#client#is_running('coc')
     call s:client['start']()
@@ -110,7 +112,7 @@ function! coc#rpc#request_async(method, args, cb) abort
   call s:client['request_async'](a:method, a:args, a:cb)
 endfunction
 
-" receive async response
+" receive async response 这个又是在哪里使用的呢？ TODO
 function! coc#rpc#async_response(id, resp, isErr) abort
   if empty(s:client)
     return

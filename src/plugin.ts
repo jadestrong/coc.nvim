@@ -19,6 +19,9 @@ import window from './window'
 import workspace from './workspace'
 const logger = require('./util/logger')('plugin')
 
+// 谁的 plugin 呢？
+// 是 nvim 的吗？
+// 在 plugin 的实例上注册了一堆的 cocAction
 export default class Plugin extends EventEmitter {
   private _ready = false
   private handler: Handler | undefined
@@ -29,18 +32,22 @@ export default class Plugin extends EventEmitter {
   constructor(public nvim: Neovim) {
     super()
     this.disposables.push(workspace.registerTextDocumentContentProvider('output', channels.getProvider(nvim)))
+
     Object.defineProperty(workspace, 'nvim', {
       get: () => this.nvim
     })
     Object.defineProperty(window, 'cursors', {
       get: () => this.cursors
     })
+
     workspace.onDidChangeWorkspaceFolders(() => {
       nvim.setVar('WorkspaceFolders', workspace.folderPaths, true)
     }, null, this.disposables)
+
     events.on('VimResized', (columns, lines) => {
       if (workspace.env) Object.assign(workspace.env, { columns, lines })
     }, null, this.disposables)
+
     this.cursors = new Cursors(nvim)
     commandManager.init(nvim, this)
 
@@ -194,7 +201,7 @@ export default class Plugin extends EventEmitter {
 
     // extensions.ts
     this.addAction('registExtensions', (...folders: string[]) => extensions.loadExtension(folders))
-    this.addAction('installExtensions', (...list: string[]) => extensions.installExtensions(list))
+    this.addAction('installExtensions', (...list: string[]) => extensions.installExtensions(list)) // 安装 coc 插件，比如 coc-tssserver
     this.addAction('updateExtensions', sync => extensions.updateExtensions(sync))
     this.addAction('extensionStats', () => extensions.getExtensionStates())
     this.addAction('loadedExtensions', () => extensions.loadedExtensions())
@@ -237,11 +244,13 @@ export default class Plugin extends EventEmitter {
     this.actions.set(key, fn)
   }
 
+  // 感觉主要工作就在这里了？
+  // 进行各种配套功能的初始化？
   public async init(): Promise<void> {
     let { nvim } = this
     let s = Date.now()
     try {
-      await extensions.init()
+      await extensions.init() // 加载 coc extensions
       await workspace.init(window)
 
       nvim.setVar('coc_workspace_initialized', true, true)

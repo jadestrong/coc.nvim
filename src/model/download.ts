@@ -29,6 +29,7 @@ export interface DownloadOptions extends Omit<FetchOptions, 'buffer'> {
 
 /**
  * Download file from url, with optional untar/unzip support.
+ * 使用 http/https 发起下载请求，并通过 stream 来边下载边解压
  *
  * @param {string} url
  * @param {DownloadOptions} options contains dest folder and optional onProgress callback
@@ -58,8 +59,10 @@ export default function download(url: string, options: DownloadOptions, token?: 
       })
     }
     let timer: NodeJS.Timer
+    // 使用 http 或者 https 模块来下载 tarball 文件
     const req = mod.request(opts, (res: IncomingMessage) => {
       if ((res.statusCode >= 200 && res.statusCode < 300) || res.statusCode === 1223) {
+        // 拿到响应头信息
         let headers = res.headers || {}
         let dispositionHeader = headers['content-disposition']
         if (!extname && dispositionHeader) {
@@ -68,6 +71,7 @@ export default function download(url: string, options: DownloadOptions, token?: 
             extname = path.extname(disposition.parameters.filename)
           }
         }
+        // 是否要解压？
         if (extract === true) {
           if (extname === '.zip' || headers['content-type'] == 'application/zip') {
             extract = 'unzip'
@@ -78,10 +82,12 @@ export default function download(url: string, options: DownloadOptions, token?: 
             return
           }
         }
+        // 得到下载的 content-length
         let total = Number(headers['content-length'])
         let cur = 0
         if (!isNaN(total)) {
           res.on('data', chunk => {
+            // 计算下载的进度
             cur += chunk.length
             let percent = (cur / total * 100).toFixed(1)
             if (onProgress) {
@@ -103,6 +109,7 @@ export default function download(url: string, options: DownloadOptions, token?: 
         res.on('end', () => {
           logger.info('Download completed:', url)
         })
+        // 通过流来实现边下载边解压，并写入到 dest 目录
         let stream: any
         if (extract === 'untar') {
           stream = res.pipe(tar.x({ strip: options.strip ?? 1, C: dest }))
@@ -126,6 +133,7 @@ export default function download(url: string, options: DownloadOptions, token?: 
     req.on('error', e => {
       // Possible succeed proxy request with ECONNRESET error on node > 14
       if (opts.agent && e.code == 'ECONNRESET') {
+        // 如果中间有这个错误抛出，则等待 500 毫秒，如果又接收到了数据，则取消这个倒计时
         timer = setTimeout(() => {
           reject(e)
         }, 500)
@@ -136,6 +144,7 @@ export default function download(url: string, options: DownloadOptions, token?: 
     req.on('timeout', () => {
       req.destroy(new Error(`request timeout after ${options.timeout}ms`))
     })
+    // 设置 req 的请求超时
     if (options.timeout) {
       req.setTimeout(options.timeout)
     }
