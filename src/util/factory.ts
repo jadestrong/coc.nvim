@@ -156,6 +156,7 @@ export function createSandbox(filename: string, logger: ILogger): ISandbox {
 }
 
 // inspiration drawn from Module
+// 得到 activate 和 deactivate 方法
 export function createExtension(id: string, filename: string, isEmpty = false): ExtensionExport {
   if (isEmpty || !fs.existsSync(filename)) return {
     activate: () => {},
@@ -167,7 +168,7 @@ export function createExtension(id: string, filename: string, isEmpty = false): 
 
   // attempt to import plugin
   // Require plugin to export activate & deactivate
-  const defaultImport = sandbox.require(filename)
+  const defaultImport = sandbox.require(filename) // 实用 sandbox 来加载插件的文件，拿到默认导出的实例
   const activate = (defaultImport && defaultImport.activate) || defaultImport
 
   if (typeof activate !== 'function') {

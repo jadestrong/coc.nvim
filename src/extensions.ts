@@ -511,6 +511,7 @@ export class Extensions {
   }
 
   /**
+   * folder -> 安装的插件的 package.json 所在的目录
    * Load extension from folder, folder should contains coc extension.
    */
   public async loadExtension(folder: string | string[]): Promise<boolean> {
@@ -521,15 +522,18 @@ export class Extensions {
       return true
     }
     try {
+      // 得到父级目录
       let parentFolder = path.dirname(folder)
       // 如果当前插件的目录是我们定义的存放插件的 extensions 目录，表明这是一个本地插件
       let isLocal = path.normalize(parentFolder) != path.normalize(this.modulesFolder)
       let jsonFile = path.join(folder, 'package.json')
+      // 读取 package.json 的内容
       let packageJSON = JSON.parse(fs.readFileSync(jsonFile, 'utf8'))
       let { name } = packageJSON
       if (this.isDisabled(name)) return false
       // unload if loaded
       await this.unloadExtension(name)
+      //
       this.createExtension(folder, Object.freeze(packageJSON), isLocal ? ExtensionType.Local : ExtensionType.Global)
       return true
     } catch (e) {
@@ -893,10 +897,12 @@ export class Extensions {
     let id = packageJSON.name
     let isActive = false
     let result: Promise<API> | undefined
+    // 实用 package.json 中定义的 main 字段指定的路径或者 index.js 作为插件的入口文件
     let filename = path.join(root, packageJSON.main || 'index.js')
     let ext: ExtensionExport
     let subscriptions: Disposable[] = []
     let exports: any
+
     let extension: any = {
       activate: (): Promise<API> => {
         if (result) return result
@@ -912,6 +918,7 @@ export class Extensions {
         if (!ext) {
           try {
             let isEmpty = !(packageJSON.engines || {}).hasOwnProperty('coc')
+            // 得到 activate 和 deactivate 这两个方法
             ext = createExtension(id, filename, isEmpty)
           } catch (e) {
             logger.error(`Error on createExtension ${id} from ${filename}`, e)
@@ -920,6 +927,7 @@ export class Extensions {
         }
         result = new Promise((resolve, reject) => {
           try {
+            // 激活插件，给插件传入 context 作为参数
             Promise.resolve(ext.activate(context)).then(res => {
               isActive = true
               exports = res
@@ -936,6 +944,8 @@ export class Extensions {
         return result
       }
     }
+
+    // 给 extension 对象注册一些访问方法
     Object.defineProperties(extension, {
       id: {
         get: () => id,
@@ -962,6 +972,7 @@ export class Extensions {
       }
     })
 
+    // 存入 extensions map 中
     this.extensions.set(id, {
       id,
       type,
@@ -988,9 +999,12 @@ export class Extensions {
         }
       }
     })
+
+    // contributes 是做什么的？ TODO
     let { contributes } = packageJSON
     if (contributes) {
       let { configuration, rootPatterns, commands } = contributes
+      // properties: 当前插件的配置属性，比如 tsserver lsp 支持的所有的配置属性
       if (configuration && configuration.properties) {
         let { properties } = configuration
         let props = {}
@@ -1000,18 +1014,23 @@ export class Extensions {
         }
         workspace.configurations.extendsDefaults(props)
       }
+      // rooPatterns: 支持的文件类型吧，感觉和 languageId 和对那些文件激活该插件有关
       if (rootPatterns && rootPatterns.length) {
         for (let item of rootPatterns) {
           workspace.workspaceFolderControl.addRootPattern(item.filetype, item.patterns)
         }
       }
+      // commands: 该插件支持的命令，vscode 也支持这些命令
       if (commands && commands.length) {
         for (let cmd of commands) {
           commandManager.titles.set(cmd.command, cmd.title)
         }
       }
     }
+
+    // fire extension 做啥？ TODO
     this._onDidLoadExtension.fire(extension)
+    // 如果激活了，则？
     if (this.activated) {
       this.setupActiveEvents(id, packageJSON).logError()
     }
