@@ -50,6 +50,10 @@ const highlightsMap = {
   [CompletionItemKind.TypeParameter]: 'CocSymbolTypeParameter',
 }
 
+/**
+ * 补全源实例，实际补全的时候，就是从这些实例中过滤出适合当前文件的补全源
+ * 然后依次来进行补全
+ */
 export default class LanguageSource implements ISource {
   public priority: number
   public sourceType: SourceType.Service
@@ -83,6 +87,9 @@ export default class LanguageSource implements ISource {
     return commitCharacters.includes(character)
   }
 
+  /**
+   * completion/completion.ts 的 completeSource 中调用
+   * */
   public async doComplete(opt: CompleteOption, token: CancellationToken): Promise<CompleteResult | null> {
     let { triggerCharacter, input, bufnr } = opt
     this.completeItems = []
@@ -91,6 +98,7 @@ export default class LanguageSource implements ISource {
     let context: any = { triggerKind, option: opt }
     if (triggerKind == CompletionTriggerKind.TriggerCharacter) context.triggerCharacter = triggerCharacter
     let doc = workspace.getAttachedDocument(bufnr)
+    // 调用插件的 provider 来得到补全列表
     let result = await Promise.resolve(this.provider.provideCompletionItems(doc.textDocument, position, token, context))
     if (!result || token.isCancellationRequested) return null
     let completeItems = Array.isArray(result) ? result : result.items

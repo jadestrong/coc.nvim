@@ -259,12 +259,12 @@ export default class Plugin extends EventEmitter {
       completion.init()
       diagnosticManager.init()
       listManager.init(nvim)
-      sources.init()
+      sources.init() // 语言补全的源注册的地方
 
       // action 方法都是委托该实例来执行的，调用它上面定义的方法，其接受 nvim 实例，是用来和 vim 通信的？
       this.handler = new Handler(nvim)
 
-      // 初始化服务， language-client 也是在这里面
+      // 初始化服务， language-client 也是在这里面，这个 client 是通过 coc-settings.json 自定义的服务
       services.init()
 
       extensions.activateExtensions()

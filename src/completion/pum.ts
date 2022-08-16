@@ -124,6 +124,7 @@ export default class PopupMenu {
       lines.push(text)
     }
     let config: PumConfig = Object.assign({ width, highlights }, pumConfig)
+    // 绘制弹窗？
     this.nvim.call('coc#pum#create', [lines, opt, config], true)
     this.nvim.redrawVim()
   }

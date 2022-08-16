@@ -96,6 +96,7 @@ export class ServiceManager extends EventEmitter implements Disposable {
         this.createCustomServices()
       }
     }, null, this.disposables)
+
     this.createCustomServices()
   }
 
@@ -107,10 +108,13 @@ export class ServiceManager extends EventEmitter implements Disposable {
     }
   }
 
+  // 插件的服务初始化成功之后，会将其对象传给该方法进行注册
   public regist(service: IServiceProvider): Disposable {
+    // service 的 id
     let { id } = service
     if (!id) logger.error('invalid service configuration. ', service.name)
     if (this.registered.get(id)) return
+    // 记录到这个 map 中
     this.registered.set(id, service)
     logger.info(`registered service "${id}"`)
     if (this.shouldStart(service)) {
@@ -124,6 +128,7 @@ export class ServiceManager extends EventEmitter implements Disposable {
       logger.info(`service ${id} started`)
       this.emit('ready', id)
     }, null, this.disposables)
+    // 返回的这个 Disposable 对象，最后被存到了 context subscriptions 数组中，当服务退出时清理掉
     return Disposable.create(() => {
       // eslint-disable-next-line @typescript-eslint/no-floating-promises
       service.stop()
@@ -138,11 +143,14 @@ export class ServiceManager extends EventEmitter implements Disposable {
     return service
   }
 
+  // 判断是否需要开启该 service
   private shouldStart(service: IServiceProvider): boolean {
+    // 服务状态 Initial 是代表了什么？表示初始化完成了，初始化完成的下一步才能开启吧 TODO
     if (service.state != ServiceStat.Initial) {
       return false
     }
     let selector = service.selector
+    // 如果 workspace 的文档中有匹配该 languageId 的文件，则表示需要开启该 service
     for (let doc of workspace.documents) {
       if (workspace.match(selector, doc.textDocument)) {
         return true
@@ -219,7 +227,9 @@ export class ServiceManager extends EventEmitter implements Disposable {
     return res
   }
 
+  // 创建自定义服务时走这种方式，调用 registLanguageClient ，像 coc-tsserver 插件走的就是 regist 方法？
   private createCustomServices(): void {
+    // 这个 config 是那来的呢？ 拿到 coc-settings.json 中关于 languageserver 配置项
     let lspConfig = workspace.getConfiguration().get<{ key: LanguageServerConfig }>('languageserver', {} as any)
     for (let key of Object.keys(lspConfig)) {
       let config: LanguageServerConfig = lspConfig[key]
@@ -325,7 +335,8 @@ export class ServiceManager extends EventEmitter implements Disposable {
     return await Promise.resolve(service.client.sendRequest(method, params, token))
   }
 
-  // 其他语言插件会调用这个接口来注册自身？
+  // 其他语言插件会调用这个接口来注册自身？ 感觉这个和插件的注册是一样的，有些走这个，有些走 reigist 吗？ TODO
+  // NOTE 这个貌似是通过配置文件注册的语言服务，而不是插件的形式
   // 我们其实需要的是根据一个 json 文件来完成注册，不需要专门的插件，所以这个需要转换一下
   public registLanguageClient(client: LanguageClient): Disposable
   public registLanguageClient(name: string, config: LanguageServerConfig): Disposable

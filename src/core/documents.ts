@@ -99,6 +99,8 @@ export default class Documents implements Disposable {
       this._bufnr = bufnr
       void this.createDocument(bufnr)
     }
+    // 监听的事件比较详细，连鼠标移动、文件切换都能监听到
+    // emacs 里面实现起来比较难
     events.on('CursorMoved', checkCurrentBuffer, null, this.disposables)
     events.on('CursorMovedI', checkCurrentBuffer, null, this.disposables)
     events.on('BufUnload', this.onBufUnload, this, this.disposables)
@@ -110,9 +112,11 @@ export default class Documents implements Disposable {
     events.on('FileType', this.onFileTypeChange, this, this.disposables)
     void events.fire('BufEnter', [bufnr])
     void events.fire('BufWinEnter', [bufnr, winid])
+
     events.on('BufEnter', (bufnr: number) => {
       void this.createDocument(bufnr)
     }, null, this.disposables)
+
     if (this._env.isVim) {
       ['TextChangedP', 'TextChangedI', 'TextChanged'].forEach(event => {
         events.on(event as any, (bufnr: number, info?: InsertChange) => {
@@ -128,6 +132,7 @@ export default class Documents implements Disposable {
         }
       }, null, this.disposables)
     }
+
     this._initialized = true
   }
 
@@ -346,6 +351,7 @@ export default class Documents implements Disposable {
   private _createDocument(opts: BufferOption): Document {
     let { bufnr } = opts
     if (this.buffers.has(bufnr)) return this.buffers.get(bufnr)
+    // 这里是？ TODO
     let buffer = this.nvim.createBuffer(bufnr)
     let doc = new Document(buffer, this._env, this.nvim, opts)
     this.buffers.set(bufnr, doc)

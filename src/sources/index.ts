@@ -21,7 +21,7 @@ import LanguageSource, { CompleteConfig } from './source-language'
 import VimSource from './source-vim'
 const logger = require('../util/logger')('sources')
 
-// 要有个地方来完成监听函数的注册
+// 要有个地方来完成监听函数的注册 --> 在 completion/(index,complete).ts 文件中
 // 即注册一个方法来供 company-backend 调用，而不是统一在一个地方调用，或者和 lsp-bridge 一样，在一个地方注册一个 wrapper 方法，内部来完成对这些实际方法的调用
 export class Sources {
   private sourceMap: Map<string, ISource> = new Map()
@@ -112,6 +112,8 @@ export class Sources {
     this.disposables.push((require('./native/file')).regist(this.sourceMap))
   }
 
+  // 这里是往 sourcesMap 中塞入东西的地方
+  // 调用的地方是 src/langauges.ts
   public createLanguageSource(
     name: string,
     shortcut: string,
@@ -121,6 +123,7 @@ export class Sources {
     priority?: number | undefined,
     allCommitCharacters?: string[]
   ): Disposable {
+    // 实例化补全源实例
     let source = new LanguageSource(
       name,
       shortcut,
@@ -322,10 +325,12 @@ export class Sources {
     return this.getTriggerSources(pre, filetype, uri).length > 0
   }
 
+  // 根据 filetype 等信息来获取支持该文件的 source 有那些
   public getTriggerSources(pre: string, filetype: string, uri: string, disabled: ReadonlyArray<string> = []): ISource[] {
     if (!pre) return []
     let character = pre[pre.length - 1]
     let languageIds = filetype.split('.')
+    // 从 sources 列表中根据文件的信息来过滤出来， NOTE 问题来了， sources 列表来自哪里？
     return this.sources.filter(source => {
       let { filetypes, enable, documentSelector, name } = source
       if (disabled.includes(name)) return false

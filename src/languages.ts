@@ -88,6 +88,7 @@ class Languages {
     return this.onTypeFormatManager.register(selector, provider, triggerCharacters)
   }
 
+  // NOTE 所有的 lsp 服务都需要调用该接口来完成注册，在 coc-tsserver 会调用它，在 createCustomServices 中也会
   public registerCompletionItemProvider(
     name: string,
     shortcut: string,
@@ -99,7 +100,16 @@ class Languages {
   ): Disposable {
     selector = typeof selector == 'string' ? [{ language: selector }] : selector
     let sources = require('./sources/index').default
-    return sources.createLanguageSource(name, shortcut, selector, provider, triggerCharacters, priority, allCommitCharacters)
+    // 创建一个补全源
+    return sources.createLanguageSource(
+      name,
+      shortcut,
+      selector,
+      provider,
+      triggerCharacters,
+      priority,
+      allCommitCharacters
+    )
   }
 
   public registerCodeActionProvider(selector: DocumentSelector, provider: CodeActionProvider, clientId: string | undefined, codeActionKinds?: CodeActionKind[]): Disposable {

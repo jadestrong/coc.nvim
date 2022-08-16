@@ -75,11 +75,22 @@ export class Workspace implements IWorkspace {
 
   constructor() {
     this.version = VERSION
+    // .vim 个人配置目录
     let home = path.normalize(process.env.COC_VIMCONFIG) || path.join(os.homedir(), '.vim')
+    // 获取 .coc-settings.json
     let userConfigFile = path.join(home, CONFIG_FILE_NAME)
+    // 读取用户的 coc-settings.json 文件，在 .vim 目录，比如（来自 coc-tsserver 的 readme）
+    // {
+    //   "eslint.packageManager": "yarn",
+    //   "eslint.nodePath": ".yarn/sdks",
+    //   "workspace.workspaceFolderCheckCwd": false,
+    //   "tsserver.tsdk": ".yarn/sdks/typescript/lib"
+    // }
     this.configurations = new Configurations(userConfigFile, new ConfigurationShape(this))
     this.workspaceFolderControl = new WorkspaceFolderController(this.configurations)
+
     let documents = this.documentsManager = new Documents(this.configurations, this.workspaceFolderControl)
+
     this.contentProvider = new ContentProvider(documents)
     this.watchers = new Watchers()
     this.autocmds = new Autocmds(this.contentProvider, this.watchers)
@@ -87,6 +98,8 @@ export class Workspace implements IWorkspace {
     this.locations = new Locations(this.configurations, documents, this.contentProvider)
     this.files = new Files(documents, this.configurations, this.workspaceFolderControl, this.keymaps)
     this.editors = new Editors(documents)
+
+    // 给实例注册一些方法
     this.onDidRuntimePathChange = this.watchers.onDidRuntimePathChange
     this.onDidChangeWorkspaceFolders = this.workspaceFolderControl.onDidChangeWorkspaceFolders
     this.onDidChangeConfiguration = this.configurations.onDidChange
@@ -101,12 +114,14 @@ export class Workspace implements IWorkspace {
     this.onWillCreateFiles = this.files.onWillCreateFiles
     this.onWillRenameFiles = this.files.onWillRenameFiles
     this.onWillDeleteFiles = this.files.onWillDeleteFiles
+
     let watchmanPath = global.__TEST__ ? null : this.getWatchmanPath()
     this.fileSystemWatchers = new FileSystemWatcherManager(this.workspaceFolderControl, watchmanPath)
   }
 
   public async init(window: any): Promise<void> {
     let { nvim } = this
+    // deprecated 的方法
     for (let method of methods) {
       Object.defineProperty(this, method, {
         get: () => {
@@ -127,6 +142,7 @@ export class Workspace implements IWorkspace {
         }
       })
     }
+    // env ？
     let env = this._env = await nvim.call('coc#util#vim_info') as Env
     window.init(env)
     if (this._env.apiversion != APIVERSION) {
@@ -134,12 +150,15 @@ export class Workspace implements IWorkspace {
     }
     this.workspaceFolderControl.setWorkspaceFolders(this._env.workspaceFolders)
     this.configurations.updateUserConfig(this._env.config)
+
+    // 每一个都注册监听了一些 nvim 的事件，来处理相关的事件
     this.files.attach(nvim, env, window)
     this.contentProvider.attach(nvim)
     this.keymaps.attach(nvim)
     this.autocmds.attach(nvim, env)
     this.locations.attach(nvim, env)
     this.watchers.attach(nvim, env)
+
     await this.attach()
     await this.editors.attach(nvim)
     let channel = channels.create('watchman', nvim)

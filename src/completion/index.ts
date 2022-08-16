@@ -45,6 +45,7 @@ export class Completion implements Disposable {
     if (this.config.autoTrigger !== 'none') {
       workspace.nvim.call('coc#ui#check_pum_keymappings', [], true)
     }
+    // 这里是注册了补全触发的事件监听
     events.on('CursorMovedI', (bufnr, cursor, hasInsert) => {
       if (this.triggerTimer) clearTimeout(this.triggerTimer)
       if (hasInsert || !this.option || bufnr !== this.option.bufnr) return
@@ -143,6 +144,7 @@ export class Completion implements Disposable {
     })
   }
 
+  //  NOTE 开始补全，梦开始的地方
   public async startCompletion(option: CompleteOption, sourceList?: ISource[]): Promise<void> {
     let doc = workspace.getAttachedDocument(option.bufnr)
     option.filetype = doc.filetype
@@ -155,10 +157,11 @@ export class Completion implements Disposable {
       option,
       doc,
       this.config,
-      sourceList,
+      sourceList, // 这里定义了要从那些 source 中补全
       this.nvim)
     this._activated = true
     events.completing = true
+    // 当补全完成之后，触发该事件监听
     complete.onDidRefresh(async () => {
       if (this.triggerTimer != null) {
         clearTimeout(this.triggerTimer)
@@ -239,6 +242,7 @@ export class Completion implements Disposable {
     // trigger character
     if (info.insertChar && !isWord(info.insertChar)) {
       let disabled = doc.getVar('disabled_sources', [])
+      // 来自 sources/index.ts 文件
       let triggerSources = sources.getTriggerSources(pretext, doc.filetype, doc.uri, disabled)
       if (triggerSources.length > 0) {
         await this.triggerCompletion(doc, info, triggerSources)
@@ -254,6 +258,7 @@ export class Completion implements Disposable {
     if (info.insertChar && this.complete.isEmpty) {
       // triggering without results
       this.triggerTimer = setTimeout(async () => {
+        // 触发点
         await this.triggerCompletion(doc, info)
       }, 200)
       return
@@ -267,10 +272,11 @@ export class Completion implements Disposable {
     let { pre } = info
     // check trigger
     if (!sources) {
-      let shouldTrigger = this.shouldTrigger(doc, pre)
+      let shouldTrigger = this.shouldTrigger(doc, pre) // 如果没有传入
       if (!shouldTrigger) return false
     }
     let input = getInput(doc, pre, asciiCharactersOnly)
+    // 组织补全信息
     let option: CompleteOption = {
       input,
       line: info.line,
@@ -300,10 +306,12 @@ export class Completion implements Disposable {
       if (ignore) return false
     }
     // if (pre.length) option.triggerCharacter = pre[pre.length - 1]
+    // NOTE
     await this.startCompletion(option, sources)
     return true
   }
 
+  // 补全完成回调
   public stop(close: boolean, kind: 'cancel' | 'confirm' | '' = '', pretext?: string): void {
     if (!this._activated) return
     let inserted = kind === 'confirm' || (this.popupEvent?.inserted && kind != 'cancel')
@@ -353,6 +361,7 @@ export class Completion implements Disposable {
     change.pre = byteSlice(change.line, 0, change.col - 1)
     if (!change.pre) return
     let doc = workspace.getDocument(bufnr)
+    // 拿到文档对象，触发补全
     await this.triggerCompletion(doc, change)
   }
 
@@ -383,6 +392,7 @@ export class Completion implements Disposable {
       this.stop(true)
       return
     }
+    // 这里调用里面的过滤了，里面还又一个调用的地方， inComplete
     let items = await complete.filterResults(search)
     // cancelled
     if (items === undefined) return
@@ -390,6 +400,7 @@ export class Completion implements Disposable {
       if (!complete.isCompleting) this.stop(true)
       return
     }
+    // 显示补全弹窗
     this.showCompletion(items, search)
   }
 

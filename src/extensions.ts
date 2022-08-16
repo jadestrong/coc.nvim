@@ -626,6 +626,7 @@ export class Extensions {
   }
 
   /**
+   * 激活插件
    * Activate extension, throw error if disabled or doesn't exist.
    * Returns true if extension successfully activated.
    */
@@ -633,14 +634,17 @@ export class Extensions {
     if (this.isDisabled(id)) {
       throw new Error(`Extension ${id} is disabled!`)
     }
+    // 从 createExtension 创建并记录到 extensions map 中的插件列表中，根据 id(name) 得到`插件结构体`
     let item = this.extensions.get(id)
     if (!item) {
       throw new Error(`Extension ${id} not registered!`)
     }
     let { extension } = item
     if (extension.isActive) return true
+    // 执行插件结构体的 activate 方法
     await Promise.resolve(extension.activate())
     if (extension.isActive) {
+      // 又一次 fire ？ TODO
       this._onDidActiveExtension.fire(extension)
       return true
     }
@@ -893,6 +897,9 @@ export class Extensions {
     }
   }
 
+  /**
+   * 构造一个 extension 结构体，并记录它
+   */
   private createExtension(root: string, packageJSON: any, type: ExtensionType): void {
     let id = packageJSON.name
     let isActive = false
@@ -919,6 +926,7 @@ export class Extensions {
           try {
             let isEmpty = !(packageJSON.engines || {}).hasOwnProperty('coc')
             // 得到 activate 和 deactivate 这两个方法
+            // 这个 activate 方法来自于插件文件中导出的入口方法，执行它就是执行了插件的方法
             ext = createExtension(id, filename, isEmpty)
           } catch (e) {
             logger.error(`Error on createExtension ${id} from ${filename}`, e)
@@ -928,10 +936,12 @@ export class Extensions {
         result = new Promise((resolve, reject) => {
           try {
             // 激活插件，给插件传入 context 作为参数
+            // 这里调用了插件的方法
             Promise.resolve(ext.activate(context)).then(res => {
               isActive = true
               exports = res
-              resolve(res)
+              // 这个返回好像并没有地方用到？ TODO
+              resolve(res) // 得到的是一个 { configurePlugin(pluginId: string, configuration: {}): void } 的结构体
             }, e => {
               logger.error(`Error on active extension ${id}: ${e.message}`, e)
               reject(e)
@@ -1014,13 +1024,14 @@ export class Extensions {
         }
         workspace.configurations.extendsDefaults(props)
       }
-      // rooPatterns: 支持的文件类型吧，感觉和 languageId 和对那些文件激活该插件有关
+      // rootPatterns: 应该是根据这些 pattern 来查找项目根目录，比如有 package.json 的地方等等
       if (rootPatterns && rootPatterns.length) {
         for (let item of rootPatterns) {
           workspace.workspaceFolderControl.addRootPattern(item.filetype, item.patterns)
         }
       }
       // commands: 该插件支持的命令，vscode 也支持这些命令
+      // 这些命令又是如何注册到 vim 中去的呢？
       if (commands && commands.length) {
         for (let cmd of commands) {
           commandManager.titles.set(cmd.command, cmd.title)

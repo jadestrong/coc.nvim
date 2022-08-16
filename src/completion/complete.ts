@@ -56,7 +56,7 @@ export default class Complete {
   constructor(public option: CompleteOption,
     private document: Document,
     private config: CompleteConfig,
-    private sources: ISource[],
+    private sources: ISource[], // 传进来的初始化里面定义了支持的 source 列表
     private nvim: Neovim) {
     this.tokenSource = new CancellationTokenSource()
     sources.sort((a, b) => b.priority - a.priority)
@@ -99,6 +99,7 @@ export default class Complete {
     return names
   }
 
+  // 实际干活的地方，入口，调用在 complete/index.ts 中
   public async doComplete(): Promise<boolean> {
     let token = this.tokenSource.token
     let res = await Promise.all([
@@ -137,6 +138,7 @@ export default class Complete {
     await this.completeSources(this.sources, false)
   }
 
+  // 调用 source 来补全？
   private async completeSources(sources: ReadonlyArray<ISource>, isFilter: boolean): Promise<void> {
     let { timeout } = this.config
     let { results, tokenSource, } = this
@@ -158,16 +160,18 @@ export default class Complete {
       }, typeof timeout === 'number' ? timeout : 500)
     })
     const finished: string[] = []
+    // 执行 sources 同时也启动一个 timeout 来避免耗时过久
     await Promise.race([
       tp,
-      Promise.all(sources.map(s => this.completeSource(s, token).then(() => {
+      Promise.all(sources.map(s => this.completeSource(s, token).then(() => { // 使用 source 作为参数，执行 completeSource
         finished.push(s.name)
         if (token.isCancellationRequested || isFilter) return
         let colChanged = this.option.col !== col
         if (colChanged) this.cancel()
+
         if (colChanged || finished.length === total) {
           this.fireRefresh(0)
-        } else if (results.has(s.name)) {
+        } else if (results.has(s.name)) { // results 来自于 this.results ，补全的 result 也根据 name 存在这里，而不是直接返回的，为了缓存？？TODO
           this.fireRefresh(16)
         }
       })))])
@@ -187,6 +191,7 @@ export default class Complete {
       const priority = source.priority ?? 0
       const start = Date.now()
       await new Promise<void>((resolve, reject) => {
+        // NOTE 执行 source 的 doComplete 方法
         Promise.resolve(source.doComplete(opt, token)).then(result => {
           if (token.isCancellationRequested) {
             resolve(undefined)
@@ -237,10 +242,12 @@ export default class Complete {
     let sources = this.sources.filter(s => names.includes(s.name))
     await this.completeSources(sources, true)
     if (token.isCancellationRequested) return undefined
+    // 当补全完成之后，根据 resumeInput 来过滤补全项
     return this.filterItems(resumeInput)
   }
 
   public filterItems(input: string): ExtendedCompleteItem[] | undefined {
+    // 从 this 上拿到 results 结果
     let { results, names, inputOffset } = this
     if (inputOffset > 0) input = byteSlice(input, inputOffset)
     this._input = input
@@ -291,6 +298,7 @@ export default class Complete {
         arr.push(item)
       }
     }
+    // 排序
     arr.sort((a, b) => {
       let sa = a.sortText
       let sb = b.sortText
@@ -310,6 +318,7 @@ export default class Complete {
           return a.filterText.length - b.filterText.length
       }
     })
+    // 最多返回多少？避免太长了？
     return this.limitCompleteItems(arr.slice(0, maxItemCount))
   }
 
@@ -328,6 +337,7 @@ export default class Complete {
     let { highPrioritySourceLimit, lowPrioritySourceLimit } = this.config
     if (!highPrioritySourceLimit && !lowPrioritySourceLimit) return items
     let counts: Map<string, number> = new Map()
+    // 根据优先级再筛一遍？
     return items.filter(item => {
       let { priority, source } = item
       let isLow = priority < 90
