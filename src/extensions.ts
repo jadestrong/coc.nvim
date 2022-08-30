@@ -153,26 +153,33 @@ export class Extensions {
   }
 
   public async init(): Promise<void> {
+    // 从 db 中拿到这个 obj 是什么？
     let extensionObj = this.db.fetch('extension') || {}
     let keys = Object.keys(extensionObj)
+    // 找出所有 disabled 的
     for (let key of keys) {
       if (extensionObj[key].disabled == true) {
         this.disabled.add(key)
       }
     }
+    // 如果不加载插件，则直接返回
     if (process.env.COC_NO_PLUGINS) return
+    // 插件的统计信息？ global and local
     let stats = await this.globalExtensionStats()
     let localStats = await this.localExtensionStats(stats.map(o => o.id))
     stats = stats.concat(localStats)
     this.memos = new Memos(path.resolve(this.root, '../memos.json'))
+
     stats.map(stat => {
       let extensionType = stat.isLocal ? ExtensionType.Local : ExtensionType.Global
       try {
+        // 自行创建？
         this.createExtension(stat.root, stat.packageJSON, extensionType)
       } catch (e) {
         logger.error(`Error on create ${stat.root}:`, e)
       }
     })
+    // 又加载文件插件，和上面的区别是什么？
     await this.loadFileExtensions()
     commandManager.register({
       id: 'extensions.forceUpdateAll',
@@ -707,8 +714,10 @@ export class Extensions {
 
   private async globalExtensionStats(): Promise<ExtensionInfo[]> {
     let json = this.loadJson()
+    // dependencies 中是当前已经安装的插件的列表
     if (!json || !json.dependencies) return []
     let { modulesFolder } = this
+    // 全部安装
     let res: ExtensionInfo[] = await Promise.all(Object.keys(json.dependencies).map(key => new Promise<ExtensionInfo>(async resolve => {
       try {
         let val = json.dependencies[key]
@@ -745,12 +754,15 @@ export class Extensions {
   }
 
   private async localExtensionStats(excludes: string[]): Promise<ExtensionInfo[]> {
+    // runtimepath 又是什么呢？
     let runtimepath = await workspace.nvim.eval('join(globpath(&runtimepath, "", 0, 1), ",")') as string
+    // 得到一个 paths 数组，应该是一堆插件的目录地址
     let paths = runtimepath.split(',')
     let res: ExtensionInfo[] = await Promise.all(paths.map(root => new Promise<ExtensionInfo>(async resolve => {
       try {
         let res = this.checkDirectory(root)
         if (res !== true) return resolve(null)
+        // 读取插件的本地 package.json
         let jsonFile = path.join(root, 'package.json')
         let content = await readFile(jsonFile, 'utf8')
         let obj = JSON.parse(content)
@@ -783,6 +795,8 @@ export class Extensions {
     return res.filter(info => info != null)
   }
 
+  // 读取 root 下的 package.json ，这个 root 是 extensions 目录吧
+  // 而这个 json 就是所有已经安装的插件的记录文件
   private loadJson(): any {
     let { root } = this
     let jsonFile = path.join(root, 'package.json')
@@ -904,7 +918,7 @@ export class Extensions {
     let id = packageJSON.name
     let isActive = false
     let result: Promise<API> | undefined
-    // 实用 package.json 中定义的 main 字段指定的路径或者 index.js 作为插件的入口文件
+    // 使用 package.json 中定义的 main 字段指定的路径或者 index.js 作为插件的入口文件
     let filename = path.join(root, packageJSON.main || 'index.js')
     let ext: ExtensionExport
     let subscriptions: Disposable[] = []

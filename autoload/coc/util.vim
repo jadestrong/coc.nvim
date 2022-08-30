@@ -480,12 +480,13 @@ function! coc#util#get_indentkeys() abort
   return &indentkeys
 endfunction
 
+" 参数是当前 buffer 的 id
 function! coc#util#get_bufoptions(bufnr) abort
   if !bufloaded(a:bufnr) | return v:null | endif
-  let bufname = bufname(a:bufnr)
-  let buftype = getbufvar(a:bufnr, '&buftype')
-  let winid = bufwinid(a:bufnr)
-  let size = -1
+  let bufname = bufname(a:bufnr) " 拿到当前 buffer 的 name
+  let buftype = getbufvar(a:bufnr, '&buftype') " 得到 buftype
+  let winid = bufwinid(a:bufnr) " 当前 buffer 的 win id
+  let size = -1 " buffer 的字节数
   if bufnr('%') == a:bufnr
     let size = line2byte(line("$") + 1)
   elseif !empty(bufname)
@@ -493,7 +494,7 @@ function! coc#util#get_bufoptions(bufnr) abort
   endif
   let lines = v:null
   if getbufvar(a:bufnr, 'coc_enabled', 1) && (buftype == '' || buftype == 'acwrite') && size < get(g:, 'coc_max_filesize', 2097152)
-    let lines = getbufline(a:bufnr, 1, '$')
+    let lines = getbufline(a:bufnr, 1, '$') " 获得一个列表，每一个列表元素都是文本内容的一行
   endif
   return {
         \ 'bufnr': a:bufnr,

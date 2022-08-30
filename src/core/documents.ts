@@ -246,6 +246,7 @@ export default class Documents implements Disposable {
     }
     this._currentResolve = true
     return new Promise<Document>((resolve, reject) => {
+      // 获取 buffer 的信息， bufnr("%") 应该是获得当前 buffer 的 id
       this.nvim.eval('coc#util#get_bufoptions(bufnr("%"))').then((opts: BufferOption) => {
         let doc: Document | undefined
         if (opts != null) {
@@ -343,6 +344,7 @@ export default class Documents implements Disposable {
     return await promise
   }
 
+  // 监听 buffer 创建，同步的在 doumentManager 中创建一个 document 对象？
   public async onBufCreate(bufnr: number): Promise<void> {
     this.onBufUnload(bufnr)
     await this.createDocument(bufnr)
@@ -350,8 +352,9 @@ export default class Documents implements Disposable {
 
   private _createDocument(opts: BufferOption): Document {
     let { bufnr } = opts
+    // 是否已经存在了？
     if (this.buffers.has(bufnr)) return this.buffers.get(bufnr)
-    // 这里是？ TODO
+    // What is it? 这里发起创建吗？ TODO
     let buffer = this.nvim.createBuffer(bufnr)
     let doc = new Document(buffer, this._env, this.nvim, opts)
     this.buffers.set(bufnr, doc)
@@ -365,6 +368,7 @@ export default class Documents implements Disposable {
         }
       }
       this._onDidOpenTextDocument.fire(doc.textDocument)
+      // 给这个 doc 对象挂载上 change 监听？
       doc.onDocumentChange(e => this._onDidChangeDocument.fire(e))
     }
     logger.debug('buffer created', bufnr, doc.attached, doc.uri)

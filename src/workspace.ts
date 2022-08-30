@@ -87,8 +87,11 @@ export class Workspace implements IWorkspace {
     //   "tsserver.tsdk": ".yarn/sdks/typescript/lib"
     // }
     this.configurations = new Configurations(userConfigFile, new ConfigurationShape(this))
+
+    // 管理 workspace 下面的所有项目文件夹，负责识别项目根目录啥的
     this.workspaceFolderControl = new WorkspaceFolderController(this.configurations)
 
+    // 负责文档 buffer 的管理，将文档添加到对应的 folder 下
     let documents = this.documentsManager = new Documents(this.configurations, this.workspaceFolderControl)
 
     this.contentProvider = new ContentProvider(documents)
@@ -145,6 +148,7 @@ export class Workspace implements IWorkspace {
     // env ？
     let env = this._env = await nvim.call('coc#util#vim_info') as Env
     window.init(env)
+
     if (this._env.apiversion != APIVERSION) {
       nvim.echoError(`API version ${this._env.apiversion} is not ${APIVERSION}, please build coc.nvim by 'yarn install' after pull source code.`)
     }

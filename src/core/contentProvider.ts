@@ -27,6 +27,7 @@ export default class ContentProvider implements Disposable {
     return Array.from(this.providers.keys())
   }
 
+  // 当一个 buffer 被读取的时候？
   private async onBufReadCmd(scheme: string, uri: string): Promise<void> {
     let provider = this.providers.get(scheme)
     if (!provider) return
@@ -38,6 +39,7 @@ export default class ContentProvider implements Disposable {
       end: -1,
       strictIndexing: false
     })
+    // 触发创建 Buffer 事件？
     process.nextTick(() => {
       void events.fire('BufCreate', [buf.id])
     })
