@@ -152,6 +152,7 @@ export class Workspace implements IWorkspace {
     if (this._env.apiversion != APIVERSION) {
       nvim.echoError(`API version ${this._env.apiversion} is not ${APIVERSION}, please build coc.nvim by 'yarn install' after pull source code.`)
     }
+
     this.workspaceFolderControl.setWorkspaceFolders(this._env.workspaceFolders)
     this.configurations.updateUserConfig(this._env.config)
 

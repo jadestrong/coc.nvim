@@ -20,7 +20,7 @@ export interface TaskOptions {
  * @public
  */
 export default class Task implements Disposable {
-  private disposables: Disposable[] = []
+  private disposables: Disposable[] = [] // tasks 自身清理的数组， task 实例的所有监听都会将自身的清理函数放到这里
   private readonly _onExit = new Emitter<number>()
   private readonly _onStderr = new Emitter<string[]>()
   private readonly _onStdout = new Emitter<string[]>()
@@ -33,6 +33,7 @@ export default class Task implements Disposable {
    * @param {string} id unique id
    */
   constructor(private nvim: Neovim, private id: string) {
+    // 监听 nvim 的这些事件吗，然后通知给监听这个 task 这些事件的地方
     events.on('TaskExit', (id, code) => {
       if (id == this.id) {
         this._onExit.fire(code)
@@ -58,6 +59,7 @@ export default class Task implements Disposable {
    */
   public async start(opts: TaskOptions): Promise<boolean> {
     let { nvim } = this
+    // id 比如是 tsc
     return await nvim.call('coc#task#start', [this.id, opts])
   }
 

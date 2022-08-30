@@ -17,6 +17,7 @@ function! coc#task#start(id, opts)
   if coc#task#running(a:id)
     call coc#task#stop(a:id)
   endif
+  " 拿到命令和参数，比如 tsc
   let cmd = [a:opts['cmd']] + get(a:opts, 'args', [])
   let cwd = get(a:opts, 'cwd', getcwd())
   let env = get(a:opts, 'env', {})
@@ -66,6 +67,9 @@ function! coc#task#start(id, opts)
     if get(a:opts, 'pty', 0)
       let options['pty'] = 1
     endif
+    " 启动一个 job ，为啥要启动一个 tsc 监听呢？
+    " 其实是让 vim 启动了一个 process 来执行这个命令
+    " 并注册了相应的异常处理事件监听，并将其同步给 coc 由其来清理掉这些注册的任务
     let chan_id = jobstart(cmd, options)
     if !empty(original)
       for key in keys(original)

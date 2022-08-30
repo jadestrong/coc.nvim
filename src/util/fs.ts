@@ -54,12 +54,15 @@ export function isFolderIgnored(folder: string, ignored: string[] = []): boolean
 
 export function resolveRoot(folder: string, subs: string[], cwd?: string, bottomup = false, checkCwd = true, ignored: string[] = []): string | null {
   let dir = fixDriver(folder)
+  // 是否要检查一下当前的工作目录，算是一种假设优化
   if (checkCwd
     && cwd
     && isParentFolder(cwd, dir, true)
     && !isFolderIgnored(cwd, ignored)
     && inDirectory(cwd, subs)) return cwd
+  // 否则就逐级查找
   let parts = dir.split(path.sep)
+  // 查找方向，从子目录到父目录的顺序
   if (bottomup) {
     while (parts.length > 0) {
       let dir = parts.join(path.sep)
@@ -70,6 +73,7 @@ export function resolveRoot(folder: string, subs: string[], cwd?: string, bottom
     }
     return null
   } else {
+    // 从父目录往子目录的顺序检查
     let curr: string[] = [parts.shift()]
     for (let part of parts) {
       curr.push(part)
@@ -113,6 +117,7 @@ export async function checkFolder(dir: string, pattern: string, timeout = 500): 
   })
 }
 
+// 查找指定的 subs 是否当前 dir 下的文件，比如 .git 存不存在
 export function inDirectory(dir: string, subs: string[]): boolean {
   try {
     let files = fs.readdirSync(dir)

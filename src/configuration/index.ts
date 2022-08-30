@@ -51,6 +51,7 @@ export default class Configurations {
       workspace: { contents: {} }
     }
     this._configuration = Configurations.parse(data)
+    // 监听文件变更
     this.watchFile(userConfigFile, ConfigurationTarget.User)
     this.addFolderFromCwd()
   }

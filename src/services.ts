@@ -109,6 +109,7 @@ export class ServiceManager extends EventEmitter implements Disposable {
   }
 
   // 插件的服务初始化成功之后，会将其对象传给该方法进行注册
+  // 其他插件比如 coc-tsserver 会直接调用该方法来注册自测 NOTE
   public regist(service: IServiceProvider): Disposable {
     // service 的 id
     let { id } = service
@@ -276,7 +277,7 @@ export class ServiceManager extends EventEmitter implements Disposable {
       })
     })
     return new Promise(resolve => {
-      let listener = clientId => {
+      let listener = (clientId: string) => {
         if (clientId == id || clientId == `languageserver.${id}`) {
           this.off('ready', listener)
           resolve()

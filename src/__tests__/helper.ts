@@ -207,8 +207,11 @@ export class Helper extends EventEmitter {
     if (!file || !path.isAbsolute(file)) {
       file = path.join(__dirname, file ? file : `${uuid()}`)
     }
+    // 得到一个合法的文件路径+名？
     let escaped = await this.nvim.call('fnameescape', file) as string
+    // 调用 vim 的 edit 来创建一个文件？
     await this.nvim.command(`edit ${escaped}`)
+    // 等待同步到 workspace 中？
     let doc = await workspace.document
     return doc.buffer
   }

@@ -67,6 +67,7 @@ export default class Documents implements Disposable {
     let maxFileSize = preferences.get<string>('maxFileSize', '10MB')
     this.maxFileSize = bytes.parse(maxFileSize)
     nvim.setVar('coc_max_filesize', this.maxFileSize, true)
+    // 启动的时候获取已经打开过的文件？
     let { bufnrs, winid, bufnr, winids } = await this.nvim.call('coc#util#all_state') as StateInfo
     this.winids = new Set(winids)
     this._bufnr = bufnr

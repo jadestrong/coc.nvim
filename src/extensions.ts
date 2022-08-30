@@ -156,7 +156,7 @@ export class Extensions {
     // 从 db 中拿到这个 obj 是什么？
     let extensionObj = this.db.fetch('extension') || {}
     let keys = Object.keys(extensionObj)
-    // 找出所有 disabled 的
+    // 如果注明了要 disable 则 disable 它
     for (let key of keys) {
       if (extensionObj[key].disabled == true) {
         this.disabled.add(key)
@@ -651,7 +651,8 @@ export class Extensions {
     // 执行插件结构体的 activate 方法
     await Promise.resolve(extension.activate())
     if (extension.isActive) {
-      // 又一次 fire ？ TODO
+      // 插件内会监听该事件
+      // 通知插件 active 完成，插件执行注册的回调函数，比如 coc-tsserver 会在插件激活完成之后，加载 plugins
       this._onDidActiveExtension.fire(extension)
       return true
     }
@@ -855,11 +856,14 @@ export class Extensions {
       let parts = eventName.split(':')
       let ev = parts[0]
       if (ev == 'onLanguage') {
+        // 如果当插件加载的时候，当前 workspace 支持该语言，则立即激活
         if (workspace.languageIds.has(parts[1])
           || workspace.filetypes.has(parts[1])) {
           await active()
           return
         }
+        // 给 workspace 挂载一个 didOpen 监听？
+        // 之后的文件打开的时候，再激活该语言
         workspace.onDidOpenTextDocument(document => {
           let doc = workspace.getDocument(document.bufnr)
           if (document.languageId == parts[1] || doc.filetype == parts[1]) {
@@ -1039,6 +1043,7 @@ export class Extensions {
         workspace.configurations.extendsDefaults(props)
       }
       // rootPatterns: 应该是根据这些 pattern 来查找项目根目录，比如有 package.json 的地方等等
+      // NOTE 在 workspace 中注册 rootPattern
       if (rootPatterns && rootPatterns.length) {
         for (let item of rootPatterns) {
           workspace.workspaceFolderControl.addRootPattern(item.filetype, item.patterns)

@@ -286,6 +286,7 @@ export default class Document {
     }))
   }
 
+  // 应用补全结果中的 textEdit 吗
   public async applyEdits(edits: TextEdit[], joinUndo = false, move: boolean | Position = false): Promise<TextEdit | undefined> {
     if (Array.isArray(arguments[1])) edits = arguments[1]
     if (!this._attached || edits.length === 0) return

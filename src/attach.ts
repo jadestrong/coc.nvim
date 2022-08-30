@@ -69,11 +69,13 @@ export default (opts: Attach, requestApi = true): Plugin => {
         break
       case 'CocAutocmd':
         logger.trace('Notification autocmd:', ...args)
+        // 这里将 vim 里面的事件 fire 出去，比如 CursorMoved
         await events.fire(args[0], args.slice(1))
         break
       case 'redraw':
         break
       default: {
+        // 非上面这些事件，则走 Action 检查
         let exists = plugin.hasAction(method)
         if (!exists) {
           console.error(`action "${method}" does not exist`)

@@ -257,16 +257,21 @@ class Events {
   public on(event: EmptyEvents, handler: () => Result, thisArg?: any, disposables?: Disposable[]): Disposable
   public on(event: AllEvents | AllEvents[], handler: (...args: unknown[]) => Result, thisArg?: any, disposables?: Disposable[]): Disposable
   public on(event: AllEvents[] | AllEvents, handler: (...args: any[]) => Result, thisArg?: any, disposables?: Disposable[]): Disposable {
+    // 如果参数是一个数组
     if (Array.isArray(event)) {
       let arr = disposables || []
       for (let ev of event) {
+        // 递归的调用自身
         this.on(ev as any, handler, thisArg, arr)
       }
       return Disposable.create(() => {
         disposeAll(arr)
       })
     } else {
+      // 处理事件的核心逻辑在这里
+      // 找一下是不是已经有对该事件类型的监听了
       let arr = this.handlers.get(event) || []
+      // 封装一个事件处理函数
       let wrappedhandler = args => new Promise((resolve, reject) => {
         try {
           Promise.resolve(handler.apply(thisArg ?? null, args)).then(() => {
@@ -278,17 +283,23 @@ class Events {
           reject(e)
         }
       })
+      // 将其添加到 handler 数组中
       arr.push(wrappedhandler)
+      // 完成对该事件类型的注册
       this.handlers.set(event, arr)
+      // 创建一个 dispose 用于清理
       let disposable = Disposable.create(() => {
         let idx = arr.indexOf(wrappedhandler)
+        // 主要是从这个监听数组中删除自身
         if (idx !== -1) {
           arr.splice(idx, 1)
         }
       })
+      // 将其添加到清理数组中
       if (Array.isArray(disposables)) {
         disposables.push(disposable)
       }
+      // 返回这个 disposable
       return disposable
     }
   }

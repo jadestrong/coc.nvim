@@ -11,11 +11,12 @@ import { isParentFolder, resolveRoot } from '../util/fs'
 function toWorkspaceFolder(fsPath: string): WorkspaceFolder | undefined {
   if (!fsPath || !path.isAbsolute(fsPath)) return undefined
   return {
-    name: path.basename(fsPath),
-    uri: URI.file(fsPath).toString()
+    name: path.basename(fsPath), // 取出文件路径最后的文件名
+    uri: URI.file(fsPath).toString() // 将一个文件路径装换成一个 URI 字符串？什么样子呢？TODO
   }
 }
 
+/** 管理 workspace 下的文件夹 */
 export default class WorkspaceFolderController {
   private _onDidChangeWorkspaceFolders = new Emitter<WorkspaceFoldersChangeEvent>()
   public readonly onDidChangeWorkspaceFolders: Event<WorkspaceFoldersChangeEvent> = this._onDidChangeWorkspaceFolders.event
@@ -27,17 +28,21 @@ export default class WorkspaceFolderController {
   ) {
   }
 
+  // 给 workspace 添加一系列的 folders
   public setWorkspaceFolders(folders: string[] | undefined): void {
     if (!folders || !Array.isArray(folders)) return
     let arr = folders.map(f => toWorkspaceFolder(f))
     this._workspaceFolders = arr.filter(o => o != null)
   }
 
+  // 应该式一个形如： file:///xxx 的文件路径
+  // 得到 workspace 下给定 uri 所属的文件夹
   public getWorkspaceFolder(uri: URI): WorkspaceFolder | undefined {
     if (uri.scheme !== 'file') return undefined
     let folders = Array.from(this._workspaceFolders).map(o => URI.parse(o.uri).fsPath)
     folders.sort((a, b) => b.length - a.length)
     let fsPath = uri.fsPath
+    // 找到 uri 的父级目录
     let folder = folders.find(f => isParentFolder(f, fsPath, true))
     return toWorkspaceFolder(folder)
   }
@@ -70,6 +75,7 @@ export default class WorkspaceFolderController {
     return this._workspaceFolders
   }
 
+  // 将给定的 rootPatterns 记录到给定 filetype 的配置中
   public addRootPattern(filetype: string, rootPatterns: string[]): void {
     let patterns = this.rootPatterns.get(filetype) || []
     for (let p of rootPatterns) {
@@ -91,25 +97,33 @@ export default class WorkspaceFolderController {
     let checkCwd = config.get<boolean>('workspaceFolderCheckCwd', true)
     let ignored = config.get<string[]>('ignoredFolders', [])
     let fallbackCwd = config.get<boolean>('workspaceFolderFallbackCwd', true)
+    // 如果当前的文件类型是需要忽略的，则直接返回
     if (ignoredFiletypes?.includes(document.filetype)) return null
+    // 如果当前的 workspace 记录中有该文件所属的文件夹，则直接返回
     let curr = this.getWorkspaceFolder(URI.parse(document.uri))
     if (curr) return URI.parse(curr.uri).fsPath
+
     ignored = Array.isArray(ignored) ? ignored.filter(s => s && s.length > 0).map(s => expand(s)) : []
     let res: string | null = null
     for (let patternType of types) {
+      // 依次查找符合的 rootPatterns
       let patterns = this.getRootPatterns(document, patternType)
       if (patterns && patterns.length) {
         let isBottomUp = bottomUpFiletypes.includes('*') || bottomUpFiletypes.includes(document.filetype)
+        // 找到 root
         let root = resolveRoot(dir, patterns, cwd, isBottomUp, checkCwd, ignored)
+        // 找到当前文件所属的项目根目录
         if (root) {
           res = root
           break
         }
       }
     }
+    // 如果没找到，则看是否兜底到当前工作目录，也就是当前文件所在的目录吧
     if (fallbackCwd && !res && !ignored.includes(cwd) && isParentFolder(cwd, dir, true)) {
       res = cwd
     }
+    // 如果找到了，则将该目录加入到 workspace 中
     if (res) this.addWorkspaceFolder(res, fireEvent)
     return res
   }
@@ -117,8 +131,10 @@ export default class WorkspaceFolderController {
   public addWorkspaceFolder(folder: string, fireEvent: boolean): WorkspaceFolder | undefined {
     let workspaceFolder: WorkspaceFolder = toWorkspaceFolder(folder)
     if (!workspaceFolder) return undefined
+    // 如果要加入的 folder 不存在则再加入
     if (this._workspaceFolders.findIndex(o => o.uri == workspaceFolder.uri) == -1) {
       this._workspaceFolders.push(workspaceFolder)
+      // 是否要 fireEvent
       if (fireEvent) {
         this._onDidChangeWorkspaceFolders.fire({
           added: [workspaceFolder],

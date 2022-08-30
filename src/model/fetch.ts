@@ -113,6 +113,7 @@ export function getAgent(endpoint: UrlWithStringQuery, options: ProxyOptions): H
 }
 
 export function resolveRequestOptions(url: string, options: FetchOptions = {}): any {
+  // 配置一些代理？
   let config = workspace.getConfiguration('http')
   let { data } = options
   let dataType = getDataType(data)

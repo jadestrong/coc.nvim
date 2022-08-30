@@ -45,7 +45,8 @@ export class Completion implements Disposable {
     if (this.config.autoTrigger !== 'none') {
       workspace.nvim.call('coc#ui#check_pum_keymappings', [], true)
     }
-    // 这里是注册了补全触发的事件监听
+    // 这里是注册了补全触发的事件监听,我们通过注册一个方法，供 company 调用应该就可以
+    // 只是请求的信息怎么传递的？
     events.on('CursorMovedI', (bufnr, cursor, hasInsert) => {
       if (this.triggerTimer) clearTimeout(this.triggerTimer)
       if (hasInsert || !this.option || bufnr !== this.option.bufnr) return

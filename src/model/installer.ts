@@ -63,6 +63,7 @@ export function isYarn(exePath: string) {
 
 // 拼接 npm 的 install 命令，可以不生成 lock-file 哦！！
 export function getInstallArguments(exePath: string, url: string): string[] {
+  // --production 只会安装 dependencies
   let args = ['install', '--ignore-scripts', '--no-lockfile', '--production']
   if (url.startsWith('https://github.com')) {
     args = ['install']

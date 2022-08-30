@@ -38,6 +38,7 @@ export default class WorkspaceHandler {
     return workspace.getConfiguration(key, document ? document.uri : undefined)
   }
 
+  // 查找符合当前 buffer 的 rootPattern
   public getRootPatterns(bufnr: number): RootPatterns | null {
     let doc = workspace.getDocument(bufnr)
     if (!doc) return null

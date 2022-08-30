@@ -91,7 +91,7 @@ export default class Handler implements HandlerDelegate {
     this.locations = new Locations(nvim, this)
     this.signature = new Signature(nvim, this)
     this.rename = new Rename(nvim, this)
-    this.workspace = new WorkspaceHandler(nvim, this)
+    this.workspace = new WorkspaceHandler(nvim, this) // 这个 workspaceHandler vs workspace 的关系？
     this.codeActions = new CodeActions(nvim, this)
     this.commands = new Commands(nvim, workspace.env)
     this.callHierarchy = new CallHierarchy(nvim, this)
